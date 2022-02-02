@@ -178,3 +178,150 @@ Bootstrap в Bitrix Framework
 Bootstrap подключается не в конкретном компоненте, а в целом на продукте из модуля main.
 В Bootstrap рекомендуют кастомизировать стили в отдельном файле, обычно он называется bootstrap-theme.css. В случае с Bitrix Framework он называется template_style.css - для основного шаблона и style.css в каждом отдельном компоненте. В этом случае выше перечисленные файлы подключатся после основной библиотеки.
 Если верстальщик не следует рекомендациям Bootstrap и нашей документации, то возможна ситуация, когда "плывёт" дизайн.
+
+Простой пример внедрения блочной верстки
+---
+header (шапка, хедер, пролог) - верхняя часть дизайна; хранится в файле header.php шаблона сайта (Контент > Структура сайта > Файлы и папки > bitrix > templates > [ваш шаблон] );
+
+WORK_AREA - рабочая область, содержащая основной контент; при создании страниц заполняется как раз эта область (например, Контент > Структура сайта > Файлы и папки > index.php );
+
+footer (подвал, футер, эпилог) - нижняя часть дизайна; хранится в файле footer.php шаблона сайта (Контент > Структура сайта > Файлы и папки > bitrix > templates > [ваш шаблон] ).
+
+Создаешь шаблон Рабочий стол->Настройки->Настройки продукта->Сайты->Шаблоны сайтов, закидываешь туда html верстку header и footer, там где в wp обычно контент циклом, тут #work_area#. Далее заполняешь поля. Готовый шаблон появляется в
+```
+bitrix/templates
+```
+
+Шаблонизатор
+---
+
+Первая строка
+```
+<? if (!defined('B_PROLOG_INCLUDED') || B_PROLOG_INCLUDED !== true) die(); ?>
+```
+Вывод заголовка
+```
+<title><? $APPLICATION->ShowTitle(); ?></title>
+```
+Код вывода в шаблоне сайта основных полей тега (мета-теги Content-Type, robots, keywords, description; стили CSS; скрипты):
+```
+<? $APPLICATION->ShowHead(); ?>
+```
+Панелька сверху
+После открывающего body
+```
+<div id="panel"> <? $APPLICATION->ShowPanel(); ?> </div>
+```
+Если общаемся к файлам, налого abspath в wp
+```
+<?=SITE_TEMPLATE_PATH?>
+```
+код подключения напрямую
+```
+<script src="<?=SITE_TEMPLATE_PATH?>/vendor/jquery/jquery.min.js"></script> <script src="<?=SITE_TEMPLATE_PATH?>/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+```
+если через ядро
+```
+if (!defined('B_PROLOG_INCLUDED') || B_PROLOG_INCLUDED !== true) die();
+use Bitrix\Main\Page\Asset; //Подключение библиотеки для использования Asset::getInstance()->addCss() 
+global $USER; 
+<!DOCTYPE html> ...
+```
+в head
+```
+Asset::getInstance()->addJs(SITE_TEMPLATE_PATH . "/vendor/jquery/jquery.min.js");
+Asset::getInstance()->addCss(SITE_TEMPLATE_PATH . "/vendor/fontawesome-free/css/all.min.css"); 
+```
+Подключение футера и подвала подвала
+Для создания нового сайта необходимо создать директорию
+далее закинуть туда index.php
+добавляем туда
+
+в начало:
+```
+<?require($_SERVER["DOCUMENT_ROOT"]."/bitrix/header.php");?> в конец: <?require($_SERVER["DOCUMENT_ROOT"]."/bitrix/footer.php");?>
+```
+и заменить шаблон
+если ошибка доступа для директорий 755 и 644 для файлов
+в background / от коня диска
+
+Итого шаблоны в templates index в папку в файла все остальное в настройках Сайты
+
+Кастомизация шаблона компонентов на основе списка новостей
+---
+Для создания шаблона компонента на основе готового создаем директорию
+```
+bitrix/templates/Fishing/components/bitrix/news.list/newsTemplate/template.php
+```
+
+где newsTemplate название кастомного шаблона
+template.php код шаблона
+Далее как в twig только вместо твига уаз буханка
+```
+<? foreach ($arResult["ITEMS"] as $arItem): ?> 
+    <? $this->AddEditAction($arItem['ID'], $arItem['EDIT_LINK'], CIBlock::GetArrayByID($arItem["IBLOCK_ID"], "ELEMENT_EDIT")); 
+    $this->AddDeleteAction($arItem['ID'], $arItem['DELETE_LINK'], CIBlock::GetArrayByID($arItem["IBLOCK_ID"], "ELEMENT_DELETE"), array("CONFIRM" => GetMessage('CT_BNL_ELEMENT_DELETE_CONFIRM'))); ?>
+    <div class="col-lg-4 text-center"> 
+        <div class="card bg-secondary border border-dark"> 
+            <img class="card-img-top" src="<?= $arItem["PREVIEW_PICTURE"]["SRC"] ?>" alt="<? echo $arItem["NAME"] ?>"> 
+                <div class="card-body "> 
+                     <h5 class="card-title"><? echo $arItem["NAME"] ?></h5>
+                     <? if ($arParams["DISPLAY_PREVIEW_TEXT"] != "N" && $arItem["PREVIEW_TEXT"]): ?> 
+                        <p class="card-text"><? echo $arItem["PREVIEW_TEXT"]; ?></p> 
+                    <? endif; ?>
+                        <a href="<? echo $arItem["DETAIL_PAGE_URL"] ?>" class="btn btn-primary">Подробнее</a> 
+                </div> 
+        </div> 
+    </div> 
+<? endforeach; ?>
+```
+Если ошибка записи, то 95% это права на файлы в директории (вопрос как настраивать под nginx с nobody)
+
+Туториал с utc11
+====
+Установка
+---
+Минимальная установка
+bitrix - обязательная папка в которой хранится ядро CMS Bitrix
+upload - папка с медиафайлами и другими загружаемыми файлами файлами в Битрикс
+.access.php - файл в котором задаются права на текущую папку (есть почти в каждой папке Битрикс)
+.htaccess - файл настройки веб-сервера Apache
+web.conf - файл дополнительных настроек веб-окружения (не трогаем)
+index.php
+
+Создание шаблона 1С Битрикс
+---
+Шаблон и другая кастомизация кладется в директорию /local в корне сайта. Общий путь
+```
+local/templates/starshop
+```
+
+Минимальный набор
+---
+description.php - файл описания шаблона. Это описание будет отображаться в административной части битрикс (в админки). 
+styles.css - это стили которые будут использоваться при редактировании контента (нужен контент менеджеру, у нас будет пустым)
+template_styles.css - основной файл css-стилей шаблона (в нем будем создать собственные стили)
+header.php - файл содержит шапку шаблона footer.php - файл содержит подвал шаблона (в этих файлах мы будем редактировать шаблон)
+
+А разделителем на два файла служит специальная строка #WORK_AREA#. Т.е. все что выше разделителя #WORK_AREA# попадает в header.php, а что ниже в файл footer.ph
+
+Далее берем шаблон от верстальщика и распакововыеам в local/templates/templateName
+
+Далее идем в настройки сайта и выбриаем применить наш шаблон
+
+Код шапки
+---
+Работа в шаблоне происходит с через класс CMain. Доступ к этому классу в шаблонах осуществляется через глобальную переменную $APPLICATION, что сокращает и упрощает вызываемый код.
+
+```
+<title><?$APPLICATION->ShowTitle();?></title> //заголовок <?$APPLICATION->ShowHead();?> // выводим все необходимые объявления Битрикс в <head>
+```
+Это и стили Битрикс для административной панели, и подключения его скриптов и другие файлы. 
+```
+<link rel="icon" href="<?=SITE_TEMPLATE_PATH?>/ico/favicon_bx.png"> //SITE_TEMPLATE_PATH глобальная переменная $APPLICATION->SetAdditionalCSS(SITE_TEMPLATE_PATH.'/css/1.css); - этой строкой мы подключаем стили. 
+```
+
+Если что-то не подключается проверь права.
+
+В заключении. Создаешь директорию local, templates, далее название шаблона, футер, хедер с подключением ассетов, и применяешь шаблон сайт в настройках
+
