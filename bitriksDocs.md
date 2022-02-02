@@ -426,7 +426,180 @@ setFrameMode(true); ?>
     }
 endforeach;?>        
 ```
-
 Данный код можно разместить и в самом шаблоне компонента news.list или в специальном файле result_modifier.php, который должен находится в то же директории где и файл шаблона компонента.
 Файл result_modifier.php - инструмент для модификации данных работы компонента произвольным образом. Создается разработчиком самостоятельно.
+В контексте примера код работает для параметра ключа массива $arResult["ITEMS"];
+
+Параметры компонента хранятся в корне компонента в файле .parameters.php и задаются традиционно в виде массива
+Код 
+$arTemplateParameters = array(
+    "CELL-LARGE" => Array(
+        "NAME" => "Количество столбцов для большого экрана",
+        "TYPE" => "STRING",
+        'DEFAULT' => "5",
+    ),
+    ...
+);
+
+Добавляет строки в дополнительные настройки визуального настройщика компонента. И к значениям которых можно обращаться в теле шаблона через
+```
+<?
+$largeup = 'large-up-'.$arParams['CELL-LARGE'];
+$mediumup = 'medium-up-'.$arParams['CELL-MEDIUM'];
+$smallup = 'small-up-'.$arParams['CELL-SMALL'];
+$div_class = $smallup.' '.$mediumup.' '.$largeup;
+
+?>
+<div class="grid-x grid-padding-x <?=$div_class?>">
+```
+
+Для передачи компонентов из дочернего в родительский, news.list -> news. В файле комплексного компонента news.php в массив параметров
+```
+$APPLICATION->IncludeComponent(
+    "bitrix:news.list",
+    "",
+```
+добавляем 
+```
+"CELL-LARGE" => $arParams["CELL-LARGE"],
+"CELL-MEDIUM" => $arParams["CELL-MEDIUM"],
+"CELL-SMALL" => $arParams["CELL-SMALL"],
+```
+После этого должны выводиться количество колонок из админки, но в случае туториала не выводится.
+
+Детальная страница компонента новости
+---
+Шаблон детальной страницы новости bitriks:news.detail
+Если ссылки показываются не в ЧПУ, то необходимо проверить чтобы ссылки в настройках инфоблока совпадали с настройками ЧПУ в компонентах Битрикс.
+
+
+Создание собственных компонентов
+---
+Надо помнить про пространство имен Битрикс, и про то что оно не одно и тоже что пространство имен PHP (исторически сложилось?)
+Свои компоненты необходимо располагать в своем пространстве имен, то есть если в /bitrix
+```
+/bitrix/components/``myArea``
+```
+или в случае local
+```
+/local/``components/myArea``
+```
+где myArea - пространство имен Bitrix, кастомный компонент соотвественно должен лежать
+```
+component.php - реализация логики компонента
+.description.php - файл описания компонента
+.parameters.php - файл параметров компонента
+template/.default/template.php - файл шаблона по умолчанию для компонента
+```
+В файле description лежит массив
+```
+$arComponentDescription = array(
+    ...
+    "PATH"=>array(
+        "ID"=>"myArea",
+        "NAME"=>"myAreaComponents"
+    )
+);
+```
+PATH указывает в какой директории лежит компонент
+
+Компонент вывода даты 
+component.php
+```
+<? if(!defined("B_PROLOG_INCLUDED") || B_PROLOG_INCLUDED!==true)die();
+    //Вывод даты в массив arResult в поле DATA
+    $arResult['DATE'] = date('Y-m-d');
+    $this->IncludeComponentTemplate();
+?>
+```
+
+.description.php
+```
+<? if (!defined("B_PROLOG_INCLUDED") || B_PROLOG_INCLUDED!==true) die(); $arComponentDescription = array(
+    "NAME" => GetMessage("Текущая дата"),
+    "DESCRIPTION" => GetMessage("Выводим текущую дату"),
+);
+?>
+```
+
+template.php
+```
+<? if(!defined("B_PROLOG_INCLUDED") || B_PROLOG_INCLUDED!==true)die();
+      \\Вывести значение массива с датой 
+      echo $arResult['DATE'];
+?>
+```
+
+Подключение 
+```
+<? $APPLICATION->IncludeComponent(
+\\область видимости Битрикс:директория компонента    
+"dv:date.current",
+\\использовать шаблон
+".default",
+Array(
+),
+false
+);?>
+```
+
+
+//https://forwww.com/bitrix-save-order-event/
+
+Для обработки событий используется event
+"OnOrderSave". 
+В init.php файл автоматом подключаемый в пролог
+и располагаемый по пути
+```
+/bitrix/php_interface/ID сайта/init.php
+```
+Добавляем 
+```
+AddEventHandler("sale", "OnOrderSave", "OrderMySave");
+function OrderMySave($orderID, $fields, $orderFields){
+
+}
+```
+
+Отлов переданных параметров
+```
+AddEventHandler("sale", "OnOrderSave", "OrderMySave");
+function OrderMySave($orderID, $fields, $orderFields){
+	$valText = false;
+	if ($orderFields['ORDER_PROP'][32]) {
+		$valText = $orderFields['ORDER_PROP'][32];
+	}
+	elseif ($orderFields['ORDER_PROP'][34]) {
+		$valText = $orderFields['ORDER_PROP'][34];
+	}
+```
+Простой товар – одна позиция учета, обычно наименование и единица измерения. А торговое предложение (SKU, единица складского учета, ассортиментная позиция) обязательно включает в себя еще и цвет, размер, объем, вес, какие-либо другие характеристики, и для каждого сочетания характеристик – собственная позиция учета, артикул.
+
+Из чего состоит товар в Битриксе
+- элемент инфоблока отдельно
+- цена отдельно
+- сущность товара отдельно.
+
+товар состоит из нескольких элементов ИБ (Товар+Торговое предложени+Элемент свойств). 
+Кроме того помним что цена тоже хранится отдельной сущностью и для нее можно провернуть тот же трюк
+
+bitriks.catalog.element - компонент карточки товара
+bitriks.catalog.section - компонент раздела каталога
+
+
+
+Скачиваем CSV файл номенклатуры;
+Достаем из файла цены и остатки;
+Получаем список товаров;
+Обновляем данные;
+Чистим кэш.
+
+
+
+
+
+
+
+
+
 
